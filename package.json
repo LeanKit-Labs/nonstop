@@ -1,0 +1,57 @@
+{
+  "name": "nonstop",
+  "version": "0.1.0",
+  "description": "A self-updating service host",
+  "main": "src/index.js",
+  "bin": {
+    "nonstop": "./bin/nonstop"
+  },
+  "scripts": {
+    "test": "gulp test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/LeanKit-Labs/nonstop"
+  },
+  "keywords": [
+    "nonstop",
+    "ci",
+    "cd",
+    "package"
+  ],
+  "author": "Alex Robson",
+  "license": "MIT License",
+  "bugs": {
+    "url": "https://github.com/LeanKit-Labs/nonstop/issues"
+  },
+  "homepage": "https://github.com/LeanKit-Labs/nonstop",
+  "devDependencies": {
+    "gulp": "^3.8.7",
+    "gulp-istanbul": "^0.5.0",
+    "gulp-mocha": "^1.0.0",
+    "nock": "^0.50.0",
+    "open": "0.0.5",
+    "should": "^4.0.4",
+    "sinon": "^1.12.1"
+  },
+  "dependencies": {
+    "autohost": "~0.3.0",
+    "configya": "^0.1.0",
+    "debug": "^2.0.0",
+    "drudgeon": "~0.1.0",
+    "globulesce": "^0.1.4",
+    "hyped": "~0.1.0",
+    "js-yaml": "^3.2.3",
+    "lodash": "^2.4.1",
+    "machina": "^0.4.0-1",
+    "map-stream": "0.0.5",
+    "mkdirp": "^0.5.0",
+    "nonstop-index-client": "~0.1.0",
+    "nonstop-pack": "~0.1.0",
+    "processhost": "~0.2.0",
+    "rimraf": "^2.2.8",
+    "semver": "^4.1.0",
+    "vinyl-fs": "^0.3.13",
+    "when": "^3.4.5"
+  }
+}

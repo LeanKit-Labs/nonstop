@@ -1,0 +1,10 @@
+{
+	"boot": "node ./src/index.js",
+	"preboot": {
+		"one": {
+      "win32": "gulp check-windows",
+      "*": "gulp check"
+    },
+		"two": "node prep"
+	}
+}
