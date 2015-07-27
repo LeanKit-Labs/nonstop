@@ -1,19 +1,19 @@
-var _ = require( 'lodash' );
-var path = require( 'path' );
-var sysInfo = require( './sysInfo.js' )();
-var filterFn = require( './filter.js' );
-var defaultDownloadPath = path.resolve( './downloads' );
-var defaultInstallPath = path.resolve( './installs' );
+var _ = require( "lodash" );
+var path = require( "path" );
+var sysInfo = require( "./sysInfo.js" )();
+var filterFn = require( "./filter.js" );
+var defaultDownloadPath = path.resolve( "./downloads" );
+var defaultInstallPath = path.resolve( "./installs" );
 
 function getDefaults() {
 	return {
 		index: {
-			host: 'localhost',
-			api: '/api',
+			host: "localhost",
+			api: "/api",
 			frequency: 300000,
-			port: 12321,
+			port: 4444,
 			ssl: false,
-			token: ''
+			token: ""
 		},
 		package: {
 			architecture: sysInfo.arch,
@@ -33,44 +33,44 @@ function getDefaults() {
 
 function buildRootUrl( cfg ) {
 	return [
-		( cfg.ssl ? 'https' : 'http' ),
-		'://',
+		( cfg.ssl ? "https" : "http" ),
+		"://",
 		cfg.host,
-		':',
+		":",
 		cfg.port,
 		cfg.api
-	].join( '' );
+	].join( "" );
 }
 
 function buildDownloadRoot( cfg ) {
 	return [
-		( cfg.ssl ? 'https' : 'http' ),
-		'://',
+		( cfg.ssl ? "https" : "http" ),
+		"://",
 		cfg.host,
-		':',
+		":",
 		cfg.port,
 		cfg.packages
-	].join( '' );
+	].join( "" );
 }
 
 function getConfiguration( custom ) {
 	var defaults = getDefaults();
-	var settings = _.merge( defaults, custom );
-	var cfg = require( 'configya' )( {
-		defaults: { nonstop: settings },
-		file: './bootstrap.json'
+	_.merge( defaults, custom );
+	var cfg = require( "configya" )( {
+		defaults: defaults,
+		file: "./bootstrap.json"
 	} );
 
-	cfg.nonstop.package.osName = cfg.nonstop.package.os.name || 'any';
-	cfg.nonstop.package.osVersion = cfg.nonstop.package.os.version || 'any';
+	cfg.package.osName = cfg.package.os.name || "any";
+	cfg.package.osVersion = cfg.package.os.version || "any";
 	return {
-		filter: filterFn( cfg.nonstop.package ),
-		index: cfg.nonstop.index,
-		package: cfg.nonstop.package,
+		filter: filterFn( cfg.package ),
+		index: cfg.index,
+		package: cfg.package,
 		downloads: defaultDownloadPath,
 		installs: defaultInstallPath,
-		apiRoot: buildRootUrl( cfg.nonstop.index ),
-		downloadRoot: buildDownloadRoot( cfg.nonstop.index ) 
+		apiRoot: buildRootUrl( cfg.index ),
+		downloadRoot: buildDownloadRoot( cfg.index )
 	};
 }
 

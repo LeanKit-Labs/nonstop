@@ -1,6 +1,6 @@
 {
   "name": "nonstop",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A self-updating service host",
   "main": "src/index.js",
   "bin": {
@@ -19,8 +19,17 @@
     "cd",
     "package"
   ],
-  "author": "Alex Robson",
-  "license": "MIT License",
+  "author": "LeanKit",
+  "contributors": [
+    {
+      "name": "Alex Robson",
+      "url": "http://nerdventure.io"
+    }
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/"
+  },
   "bugs": {
     "url": "https://github.com/LeanKit-Labs/nonstop/issues"
   },
@@ -35,12 +44,12 @@
     "sinon": "^1.12.1"
   },
   "dependencies": {
-    "autohost": "~0.3.0",
-    "configya": "^0.1.0",
+    "autohost": "~0.4.0",
+    "configya": "~0.2.0",
     "debug": "^2.0.0",
     "drudgeon": "~0.1.0",
-    "globulesce": "^0.1.4",
-    "hyped": "~0.1.0",
+    "globulesce": "~0.1.4",
+    "hyped": "~0.2.0",
     "js-yaml": "^3.2.3",
     "lodash": "^2.4.1",
     "machina": "^0.4.0-1",

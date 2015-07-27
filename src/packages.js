@@ -1,11 +1,11 @@
-var path = require( 'path' );
-var when = require( 'when' );
-var lift = require( 'when/node' ).lift;
-var _ = require( 'lodash' );
-var debug = require( 'debug' )( 'nonstop:packages' );
-var semver = require( 'semver' );
-var pack = require( 'nonstop-pack' );
-var index = require( 'nonstop-index-client' );
+var path = require( "path" );
+var when = require( "when" );
+var lift = require( "when/node" ).lift;
+var _ = require( "lodash" );
+var debug = require( "debug" )( "nonstop:packages" );
+var semver = require( "semver" );
+var pack = require( "nonstop-pack" );
+var index = require( "nonstop-index-client" );
 
 function download( client, file ) {
 	return client.download( file );
@@ -17,7 +17,7 @@ function getAvailable( client, ignored ) {
 
 function getInstallPath( config, version ) {
 	var filter = config.filter.toHash();
-	var target = [ filter.project, filter.owner, filter.branch ].join( '-' );
+	var target = [ filter.project, filter.owner, filter.branch ].join( "-" );
 	var targetPath;
 	if( version ) {
 		targetPath = path.join( config.installs, target, version );
@@ -56,7 +56,7 @@ function hasLatest( installed, available ) {
 }
 
 function install( fs, config, package ) {
-	var info = pack.parse( '', package );
+	var info = pack.parse( "", package );
 	var installPath = getInstallPath( config, info.version );
 	fs.ensurePath( path.dirname( installPath ) );
 	return pack.unpack( package, installPath );
@@ -68,7 +68,7 @@ module.exports = function( config, fs ) {
 		nonstop: config.package
 	} );
 
-	fs = fs || require( './fs' );
+	fs = fs || require( "./fs" );
 
 	return {
 		download: download.bind( null, client ),
