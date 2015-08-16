@@ -65,7 +65,7 @@ function install( fs, config, package ) {
 module.exports = function( config, fs ) {
 	var client = index( {
 		index: config.index,
-		nonstop: config.package
+		package: config.package
 	} );
 
 	fs = fs || require( "./fs" );
