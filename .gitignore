@@ -6,3 +6,5 @@ data
 tmp
 packages/
 coverage/
+downloads/
+installs/

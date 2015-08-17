@@ -9,7 +9,7 @@ var glob = require( "globulesce" );
 function getBuildFile( installPath ) {
 	return when.promise( function( resolve, reject ) {
 		if( fs.existsSync( installPath ) ) {
-			glob( installPath, "{**,.}/*boot.{json,yaml}" )
+			glob( installPath, "{**,.}/*boot.{json,yaml,yml}" )
 				.then( function( matches ) {
 					if( _.isEmpty( matches ) ) {
 						reject( new Error( "No nonstop boot file was found in path " + installPath ) );

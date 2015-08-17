@@ -1,18 +1,16 @@
 var path = require( "path" );
 var when = require( "when" );
-var lift = require( "when/node" ).lift;
-var _ = require( "lodash" );
 var debug = require( "debug" )( "nonstop:packages" );
 var semver = require( "semver" );
 var pack = require( "nonstop-pack" );
-var index = require( "nonstop-index-client" );
+var indexClient = require( "./indexClient" );
 
-function download( client, file ) {
-	return client.download( file );
+function download( index, file ) {
+	return index.client.download( file );
 }
 
-function getAvailable( client, ignored ) {
-	return client.getLatest( ignored );
+function getAvailable( index, ignored ) {
+	return index.client.getLatest( ignored );
 }
 
 function getInstallPath( config, version ) {
@@ -63,7 +61,7 @@ function install( fs, config, package ) {
 }
 
 module.exports = function( config, fs ) {
-	var client = index( {
+	var index = indexClient( {
 		index: config.index,
 		package: config.package
 	} );
@@ -71,12 +69,13 @@ module.exports = function( config, fs ) {
 	fs = fs || require( "./fs" );
 
 	return {
-		download: download.bind( null, client ),
-		getAvailable: getAvailable.bind( null, client ),
+		download: download.bind( null, index ),
+		getAvailable: getAvailable.bind( null, index ),
 		getDownloaded: getDownloaded.bind( null, config, fs ),
 		getInstalled: getInstalled.bind( null, config, pack ),
 		getInstallPath: getInstallPath.bind( null, config ),
 		hasLatest: hasLatest,
-		install: install.bind( null, fs, config )
+		install: install.bind( null, fs, config ),
+		updateConfig: index.update
 	};
 };

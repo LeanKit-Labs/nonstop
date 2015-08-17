@@ -32,7 +32,13 @@ Defaults are shown here. The `index` property provides information necessary to 
       "version": "",
       "files": "./downloads"
     },
-    "port": 9090
+    service: {
+      name: sysInfo.name,
+      port: {
+        local: 9090,
+        public: 9090
+      }
+    }
   }
 ```
 
@@ -56,8 +62,11 @@ Defaults are shown here. The `index` property provides information necessary to 
 | | PACKAGE_ARCHITECTURE | detected |
 | | PACKAGE_PLATFORM | detected |
 | | PACKAGE_FILES | `"./downloads"` |
-| __Service__ | | |
-| | PORT | `9090` |
+| __service__ | | |
+| | SERVICE_NAME | `machine name` |
+| | SERVICE_HOST | `machine name` |
+| | SERVICE_PORT_LOCAL | `9090` |
+| | SERVICE_PORT_PUBLIC | `9090` |
 
 ## Boot file - boot.yaml|boot.json
 nonstop expects a boot file to be contained in any package it downloads which will provide the instructions for how it should start the packaged application. The files can be written in either JSON or YAML syntax.

@@ -10,10 +10,10 @@ function getDefaults() {
 		index: {
 			host: "localhost",
 			api: "/api",
-			frequency: 300000,
+			frequency: 5000,
 			port: 4444,
 			ssl: false,
-			token: ""
+			token: "test"
 		},
 		package: {
 			architecture: sysInfo.arch,
@@ -27,7 +27,14 @@ function getDefaults() {
 			files: defaultDownloadPath,
 			os: {}
 		},
-		port: 9090
+		service: {
+			name: sysInfo.name,
+			host: sysInfo.name,
+			port: {
+				local: 9090,
+				public: 9090
+			}
+		}
 	};
 }
 
@@ -39,6 +46,16 @@ function buildRootUrl( cfg ) {
 		":",
 		cfg.port,
 		cfg.api
+	].join( "" );
+}
+
+function buildServiceUrl( cfg ) {
+	return [
+		"http://",
+		cfg.host,
+		":",
+		cfg.port.public,
+		"api"
 	].join( "" );
 }
 
@@ -67,8 +84,10 @@ function getConfiguration( custom ) {
 		filter: filterFn( cfg.package ),
 		index: cfg.index,
 		package: cfg.package,
+		service: cfg.service,
 		downloads: defaultDownloadPath,
 		installs: defaultInstallPath,
+		serviceRoot: buildServiceUrl( cfg.service ),
 		apiRoot: buildRootUrl( cfg.index ),
 		downloadRoot: buildDownloadRoot( cfg.index )
 	};

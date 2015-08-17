@@ -1,6 +1,8 @@
 var path = require( "path" );
 var debug = require( "debug" )( "nonstop:bootstrapper" );
 var machina = require( "machina" );
+var postal = require( "postal" );
+var channel = postal.channel( "status" );
 
 function createFsm( config, server, packages, processhost, drudgeon, bootFile, fs ) {
 	var Machine = machina.Fsm.extend( {
@@ -17,20 +19,34 @@ function createFsm( config, server, packages, processhost, drudgeon, bootFile, f
 				this.transition( "running" );
 			}.bind( this ) );
 			processhost.on( "hosted.failed", function( err ) {
+				channel.publish( "state", { state: "rolling back" } );
 				this.handle( "process.failed", err );
 			}.bind( this ) );
 			server.on( "noConnection", function() {
+				channel.publish( "state", { state: "waiting to connect" } );
 				this.handle( "noConnection" );
 			}.bind( this ) );
 			server.on( "hasLatest", function( version ) {
 				this.installedVersion = version;
 				this.handle( "hasLatest" );
 			}.bind( this ) );
+			server.on( "downloading", function( file ) {
+				channel.publish( "state", { state: "downloading " + file } );
+			}.bind( this ) );
+			server.on( "installing", function( file ) {
+				channel.publish( "state", { state: "installing " + file } );
+			}.bind( this ) );
 			server.on( "installed", function( version ) {
 				this.installedVersion = version;
 				this.handle( "installed" );
 			}.bind( this ) );
+			server.on( "waiting", function( info ) {
+				channel.publish( "state", info );
+			}.bind( this ) );
 			this.setProjectPath();
+			this.on( "transition", function( transition ) {
+				channel.publish( "state", { state: transition.toState } );
+			} );
 		},
 
 		setProjectPath: function() {
@@ -38,11 +54,21 @@ function createFsm( config, server, packages, processhost, drudgeon, bootFile, f
 			this.installed = path.resolve( "./installs", [ filter.project, filter.owner, filter.branch ].join( "-" ) );
 		},
 
+		reset: function() {
+			debug( "Resetting bootstrapper" );
+			server.reset();
+			this.transition( "initializing" );
+		},
+
 		start: function() {
+			debug( "Starting bootstrapper" );
+			server.start();
 			this.transition( "initializing" );
 		},
 
 		stop: function() {
+			debug( "Stopping bootstrapper" );
+			server.stop();
 			this.transition( "stopped" );
 		},
 
@@ -82,12 +108,12 @@ function createFsm( config, server, packages, processhost, drudgeon, bootFile, f
 								processhost.stop();
 								this.bootFile = file;
 								if( file.preboot ) {
-									this.transition( "prebooting" );	
+									this.transition( "prebooting" );
 								} else {
 									this.transition( "starting" );
 								}
 							}.bind( this ) );
-						
+
 					} else {
 						debug( "No installed version available." );
 						this.transition( "waiting" );
@@ -142,6 +168,7 @@ function createFsm( config, server, packages, processhost, drudgeon, bootFile, f
 				_onEnter: function() {
 					debug( "Service version \"%s\" started", this.installedVersion );
 					this.emit( "running" );
+					channel.publish( "started", { version: this.installedVersion } );
 				},
 				installed: function() {
 					debug( "New version \"%s\" installed", this.installedVersion );
@@ -149,6 +176,7 @@ function createFsm( config, server, packages, processhost, drudgeon, bootFile, f
 				},
 				"process.failed": function( err ) {
 					debug( "Service version \`%s\` failed beyond set tolerance", this.installedVersion );
+					channel.publish( "stopped", { version: this.installedVersion } );
 					this.ignored.push( this.installedVersion );
 					server.ignore( this.installedVersion );
 					this.transition( "initializing" );
@@ -157,6 +185,7 @@ function createFsm( config, server, packages, processhost, drudgeon, bootFile, f
 			stopped: {
 				_onEnter: function() {
 					clearTimeout( this.timeout );
+					channel.publish( "stopped", { version: this.installedVersion } );
 				}
 			},
 			waiting: {

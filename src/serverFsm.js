@@ -18,12 +18,19 @@ function createFsm( config, packages, installed ) {
 		initialize: function() {
 			this.installedVersion = installed || "0.0.0";
 			this.ignored = [];
-			this.wait = 5000;
+			this.wait = 500;
 			if( config && config.index && config.index.frequency ) {
 				this.wait = config.index.frequency;
 			}
 			this.waitCeiling = this.wait * 10;
 			this.lastWait = 0;
+		},
+
+		reset: function() {
+			this.installedVersion = "0.0.0";
+			this.ignored = [];
+			this.wait = 500;
+			this.transition( "checkingForNew" );
 		},
 
 		start: function( version ) {
@@ -45,8 +52,10 @@ function createFsm( config, packages, installed ) {
 			checkingForNew: {
 				_onEnter: function() {
 					packages.getAvailable( this.ignored )
-						.then( this._raise( "available.done" ) )
-						.then( null, this._raise( "available.failed" ) );
+						.then(
+							this._raise( "available.done" ),
+							this._raise( "available.failed" )
+						);
 				},
 				"available.done": function( latest ) {
 					this.latest = latest;
@@ -71,6 +80,7 @@ function createFsm( config, packages, installed ) {
 			},
 			downloading: {
 				_onEnter: function() {
+					this.emit( "downloading", this.latest.file );
 					packages.download( this.latest.file )
 						.then( this._raise( "download.done" ) );
 				},
@@ -83,6 +93,7 @@ function createFsm( config, packages, installed ) {
 			},
 			installing: {
 				_onEnter: function() {
+					this.emit( "installing", this.downloaded.file );
 					var downloaded = path.resolve( config.downloads, this.downloaded.file );
 					packages.install( downloaded )
 						.then( this._raise( "installation.done" ) )
@@ -106,9 +117,11 @@ function createFsm( config, packages, installed ) {
 					if( wait > this.waitCeiling ) {
 						wait = this.waitCeiling;
 					}
+					debug( "Attempting reconnection to index in", wait, "ms" );
 					this.timeout = setTimeout( function() {
 						this.handle( "timeout" );
 					}.bind( this ), wait );
+					this.emit( "waiting", { state: "waiting to reconnect in " + wait + " ms" } );
 				},
 				timeout: function() {
 					this.transition( "checkingForNew" );
