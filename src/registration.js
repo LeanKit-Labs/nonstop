@@ -29,7 +29,9 @@ function checkClient( config ) {
 		connection = registryClient
 			.on( "rejected", function( client, err ) {
 				debug( "Failed to connect to registry at %s:%d with %s. Retrying.", config.index.host, config.index.port, err.stack );
-				connection = client.connect();
+				setTimeout( function() {
+					connection = client.connect();
+				}, 1000 );
 			}, true )
 			.connect();
 	}

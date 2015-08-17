@@ -6,6 +6,7 @@ var fount = require( "fount" );
 var autohost = require( "autohost" );
 var hyped = require( "hyped" )();
 var fs = require( "./fs" );
+var path = require( "path" );
 var fsm = require( "./fsm" );
 var packagesFn = require( "./packages" );
 var serverFn = require( "./serverFsm" );
@@ -28,7 +29,8 @@ module.exports = function( customConfig ) {
 
 	var host = hyped.createHost( autohost, {
 		port: config.service.port.local,
-		fount: fount
+		fount: fount,
+		resources: path.resolve( __dirname, "../resource" )
 	} );
 	host.start();
 	return main;

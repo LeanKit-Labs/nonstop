@@ -1,6 +1,6 @@
 {
   "name": "nonstop",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A self-updating service host",
   "main": "src/index.js",
   "bin": {

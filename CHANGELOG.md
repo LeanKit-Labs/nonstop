@@ -1,5 +1,8 @@
 ## 0.1.*
 
+### 0.1.4
+Correct path to resources for global installation.
+
 ### 0.1.3
 Introduction of HTTP API and auto-registration with index.
 
