@@ -1,4 +1,5 @@
 var should = require( "should" );
+var _ = require( "lodash" );
 var when = require( "when" );
 var semver = require( "semver" );
 var fsmFn = require( "../src/serverFsm.js" );
@@ -21,14 +22,13 @@ var nock = require( "nock" );
 describe( "Server FSM", function() {
 	describe( "without downloaded or installed versions", function() {
 		describe( "when starting up", function() {
-			var noop = function() {};
-
 			var pack = {
-				download: noop,
-				getAvailable: noop,
-				getInstalled: noop,
-				getDownloaded: noop,
-				install: noop,
+				download: _.noop,
+				getAvailable: _.noop,
+				getInstalled: _.noop,
+				getInstalledInfo: _.noop,
+				getDownloaded: _.noop,
+				install: _.noop,
 				hasLatest: function( installed, available ) {
 					return semver.gte( installed, available );
 				}
@@ -66,7 +66,7 @@ describe( "Server FSM", function() {
 					var transitionHandle, noConnectionHandle;
 					var lastTime;
 					transitionHandle = fsm.on( "transition", function( ev ) {
-						if( ev.toState === "waiting" && --triesLeft === 0) {
+						if( ev.toState === "failed" && --triesLeft === 0) {
 							fsm.off( transitionHandle );
 							fsm.off( noConnectionHandle );
 							lastAction = ev.action;
@@ -109,11 +109,12 @@ describe( "Server FSM", function() {
 			describe( "with connectivity", function() {
 
 				describe( "with newest local package", function() {
-					var lastState;
+					var lastState, info;
 					before( function( done ) {
 						packMock = sinon.mock( pack );
 						var getAvailable = packMock.expects( "getAvailable" );
 						var getInstalled = packMock.expects( "getInstalled" );
+						var getInstalledInfo = packMock.expects( "getInstalledInfo" );
 						var getDownloaded = packMock.expects( "getDownloaded" );
 						var triesLeft = 5;
 						getInstalled
@@ -127,14 +128,22 @@ describe( "Server FSM", function() {
 						getAvailable
 							.atMost( 10 )
 							.returns( when( {
+								owner: "owner",
+								project: "proj",
+								branch: "branch",
 								file: "proj~owner~branch~0.0.9~10~darwin~OSX~10.9.2~x64.tar.gz",
 								version: "0.0.9-10",
 								build: "10"
 							} ) );
 
+						getInstalledInfo
+							.withArgs( "0.1.0-1" )
+							.returns( {} );
+
 						fsm = fsmFn( config, pack, "0.1.0-1" );
 						var hasLatestHandle;
-						hasLatestHandle = fsm.on( "hasLatest", function() {
+						hasLatestHandle = fsm.on( "hasLatest", function( latestInfo ) {
+							info = latestInfo;
 							fsm.off( hasLatestHandle );
 							lastState = fsm.state;
 							fsm.stop();
@@ -145,6 +154,17 @@ describe( "Server FSM", function() {
 
 					it( "should transition to waiting", function() {
 						lastState.should.equal( "waiting" );
+					} );
+
+					it( "should have information on the latest install", function() {
+						info.should.eql( {
+							owner: "owner",
+							project: "proj",
+							branch: "branch",
+							file: "proj~owner~branch~0.0.9~10~darwin~OSX~10.9.2~x64.tar.gz",
+							version: "0.0.9-10",
+							build: "10"
+						} );
 					} );
 
 					after( function() {
@@ -158,10 +178,14 @@ describe( "Server FSM", function() {
 						packMock = sinon.mock( pack );
 						var getAvailable = packMock.expects( "getAvailable" );
 						var getInstalled = packMock.expects( "getInstalled" );
+						var getInstalledInfo = packMock.expects( "getInstalledInfo" );
 						var getDownloaded = packMock.expects( "getDownloaded" );
 						var download = packMock.expects( "download" );
 						var install = packMock.expects( "install" );
 						var info = {
+							project: "proj",
+							owner: "owner",
+							branch: "branch",
 							file: "proj~owner~branch~0.0.9~10~darwin~OSX~10.9.2~x64.tar.gz",
 							version: "0.0.9-10",
 							build: "10"
@@ -213,7 +237,14 @@ describe( "Server FSM", function() {
 					} );
 
 					it( "should install new version", function() {
-						installedVersion.should.equal( "0.0.9-10" );
+						installedVersion.should.eql( {
+							project: "proj",
+							owner: "owner",
+							branch: "branch",
+							file: "proj~owner~branch~0.0.9~10~darwin~OSX~10.9.2~x64.tar.gz",
+							version: "0.0.9-10",
+							build: "10"
+						} );
 					} );
 
 					after( function() {

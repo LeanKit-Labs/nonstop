@@ -1,3 +1,4 @@
+var _ = require( "lodash" );
 var moment = require( "moment" );
 var postal = require( "postal" );
 require( "moment-duration-format" );
@@ -12,8 +13,10 @@ var status = {
 };
 
 channel.subscribe( "started", function( info ) {
-	serviceStart = moment();
-	status.currentVersion = info.version;
+	if( info ) {
+		serviceStart = moment();
+		status.currentVersion = info.version;
+	}
 } );
 
 channel.subscribe( "stopped", function() {
@@ -21,7 +24,7 @@ channel.subscribe( "stopped", function() {
 } );
 
 channel.subscribe( "state", function( info ) {
-	status.state = info.state;
+	_.merge( status, info );
 } );
 
 function getUptime() {

@@ -11,14 +11,13 @@ function createFsm( config, packages, installed ) {
 			}.bind( this );
 		},
 
-		ignore: function( version ) {
-			this.ignored.push( version );
-		},
-
-		initialize: function() {
+		_setup: function() {
 			this.installedVersion = installed || "0.0.0";
+			if( this.installedVersion !== "0.0.0" ) {
+				this.installed = packages.getInstalledInfo( this.installedVersion );
+			}
 			this.ignored = [];
-			this.wait = 500;
+			this.wait = 5000;
 			if( config && config.index && config.index.frequency ) {
 				this.wait = config.index.frequency;
 			}
@@ -26,10 +25,34 @@ function createFsm( config, packages, installed ) {
 			this.lastWait = 0;
 		},
 
-		reset: function() {
-			this.installedVersion = "0.0.0";
-			this.ignored = [];
-			this.wait = 500;
+		checkForNew: function() {
+			this.timeout = null;
+			this.transition( "checkingForNew" );
+		},
+
+		ignore: function( version ) {
+			this.ignored.push( version );
+		},
+
+		initialize: function() {
+			this._setup();
+		},
+
+		install: function( info ) {
+			this.downloaded = info;
+			debug( "Installing downloaded package \"%s\"", info.file );
+			this.emit( "downloaded", info );
+			this.transition( "installing" );
+		},
+
+		reset: function( newConfig ) {
+			if( this.timeout ) {
+				clearTimeout( this.timeout );
+			}
+			if( newConfig ) {
+				config = newConfig;
+			}
+			this._setup();
 			this.transition( "checkingForNew" );
 		},
 
@@ -41,6 +64,9 @@ function createFsm( config, packages, installed ) {
 		},
 
 		stop: function() {
+			if( this.timeout ) {
+				clearTimeout( this.timeout );
+			}
 			this.transition( "stopped" );
 		},
 
@@ -58,13 +84,13 @@ function createFsm( config, packages, installed ) {
 						);
 				},
 				"available.done": function( latest ) {
-					this.latest = latest;
 					if( latest ) {
 						if( packages.hasLatest( this.installedVersion, latest.version ) ) {
 							this.transition( "waiting" );
-							this.emit( "hasLatest", this.installedVersion );
+							this.emit( "hasLatest", latest );
 						} else {
-							this.emit( "hasNew" );
+							this.downloading = latest;
+							this.emit( "hasNew", latest );
 							this.transition( "downloading" );
 						}
 					} else {
@@ -74,14 +100,14 @@ function createFsm( config, packages, installed ) {
 				},
 				"available.failed": function( err ) {
 					this.emit( "noConnection" );
-					debug( "Failed to check for new versions: %s", err.toString().replace( "Error: ", "" ) );
-					this.transition( "waiting" );
+					debug( "Failed to check for new versions: %s", err.message );
+					this.transition( "failed" );
 				}
 			},
 			downloading: {
 				_onEnter: function() {
-					this.emit( "downloading", this.latest.file );
-					packages.download( this.latest.file )
+					this.emit( "downloading", this.downloading );
+					packages.download( this.downloading.file )
 						.then( this._raise( "download.done" ) );
 				},
 				"download.done": function( info ) {
@@ -93,35 +119,48 @@ function createFsm( config, packages, installed ) {
 			},
 			installing: {
 				_onEnter: function() {
-					this.emit( "installing", this.downloaded.file );
+					this.emit( "installing", this.downloaded );
 					var downloaded = path.resolve( config.downloads, this.downloaded.file );
 					packages.install( downloaded )
 						.then( this._raise( "installation.done" ) )
 						.then( null, this._raise( "installation.failed" ) );
 				},
 				"installation.done": function() {
-					debug( "Installation of version \"%s\" completed successfully", this.latest.version );
+					this.latest = this.downloaded;
 					this.installedVersion = this.latest.version;
+					debug( "Installation of version \"%s\" completed successfully", this.installedVersion );
 					this.transition( "waiting" );
-					this.emit( "installed", this.installedVersion, this.projectPath );
+					this.emit( "installed", this.latest );
 				},
 				"installation.failed": function( err ) {
 					debug( "Installation of version \"%s\" failed with %s", this.latest.version, err.stack );
-					this.transition( "waiting" );
+					this.emit( "install.failed", this.downloaded );
+					this.transition( "failed" );
 				}
 			},
 			waiting: {
 				_onEnter: function() {
+					if( this.timeout ) {
+						return;
+					}
+					var wait = this.wait;
+					debug( "Checking index for updates in %d ms", wait );
+					this.timeout = setTimeout( this.checkForNew.bind( this ), wait );
+				}
+			},
+			failed: {
+				_onEnter: function() {
+					if( this.timeout ) {
+						return;
+					}
 					var wait = this.lastWait + this.wait;
 					this.lastWait = wait;
 					if( wait > this.waitCeiling ) {
 						wait = this.waitCeiling;
 					}
-					debug( "Attempting reconnection to index in", wait, "ms" );
-					this.timeout = setTimeout( function() {
-						this.handle( "timeout" );
-					}.bind( this ), wait );
-					this.emit( "waiting", { state: "waiting to reconnect in " + wait + " ms" } );
+					debug( "Attempting reconnection in", wait, "ms" );
+					this.timeout = setTimeout( this.checkForNew.bind( this ), wait );
+					this.emit( "waiting", { state: "retrying connection in " + wait + " ms" } );
 				},
 				timeout: function() {
 					this.transition( "checkingForNew" );
@@ -129,9 +168,7 @@ function createFsm( config, packages, installed ) {
 			},
 			stopped: {
 				_onEnter: function() {
-					if( this.timeout ) {
-						clearTimeout( this.timeout );
-					}
+
 				}
 			}
 		}

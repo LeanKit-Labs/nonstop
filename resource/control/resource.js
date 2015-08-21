@@ -1,4 +1,6 @@
 var _ = require( "lodash" );
+var postal = require( "postal" );
+var notifications = postal.channel( "notifications" );
 
 var lookup = {
 	platform: "package",
@@ -10,7 +12,9 @@ var lookup = {
 	branch: "package",
 	build: "package",
 	version: "package",
-	releasOnly: "package"
+	releasOnly: "package",
+	failures: "service",
+	tolerance: "service"
 };
 
 var validCommands = [ "start", "stop", "reset" ];
@@ -34,17 +38,24 @@ module.exports = function( host, control, packages, config ) {
 				url: "/",
 				method: "patch",
 				handle: function( envelope ) {
+					notifications.publish( "configuration.changed", {
+						original: config,
+						changes: envelope.data
+					} );
 					_.each( envelope.data, function( op ) {
 						var section = config[ lookup[ op.field ] ];
 						if( section ) {
 							operate( section, op.op, op.field, op.value );
 							config[ lookup[ op.field ] ] = section;
-							if( config.filter[ op.field ] ) {
-								config.filter[ op.field ]( op.value );
+							if( section === "package" ) {
+								if( config.filter[ op.field ] ) {
+									config.filter[ op.field ]( op.value );
+								}
 							}
 						}
 					} );
 					packages.updateConfig( config );
+					control.reset( config );
 					return {
 						data: {
 							index: config.index,
@@ -59,6 +70,9 @@ module.exports = function( host, control, packages, config ) {
 				handle: function( envelope ) {
 					var command = envelope.data.command;
 					if( _.contains( validCommands, command ) ) {
+						notifications.publish( "control.command", {
+							command: command
+						} );
 						control[ command ]();
 						return {
 							status: 202,

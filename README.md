@@ -34,10 +34,16 @@ Defaults are shown here. The `index` property provides information necessary to 
     },
     service: {
       name: sysInfo.name,
+      host: {
+        ip: '',
+        name: ''
+      },
       port: {
         local: 9090,
         public: 9090
-      }
+      },
+      tolerance: 5000,
+      failures: 1
     }
   }
 ```
@@ -48,7 +54,7 @@ Defaults are shown here. The `index` property provides information necessary to 
 | __Index__ | | |
 | | INDEX_HOST | `"localhost"` |
 | | INDEX_API | `"api"` |
-| | INDEX_FREQUENCY | `300000` |
+| | INDEX_FREQUENCY | `5000` |
 | | INDEX_PORT | `4444` |
 | | INDEX_SSL | `false` |
 | | INDEX_TOKEN | `""` |
@@ -63,10 +69,13 @@ Defaults are shown here. The `index` property provides information necessary to 
 | | PACKAGE_PLATFORM | detected |
 | | PACKAGE_FILES | `"./downloads"` |
 | __service__ | | |
-| | SERVICE_NAME | `machine name` |
-| | SERVICE_HOST | `machine name` |
+| | SERVICE_NAME | `"service name"` |
+| | SERVICE_HOST_NAME | `"service name"` |
+| | SERVICE_HOST_IP | `"unspecified` |
 | | SERVICE_PORT_LOCAL | `9090` |
 | | SERVICE_PORT_PUBLIC | `9090` |
+| | SERVICE_FAILURES | `1` |
+| | SERVICE_TOLERANCE | `5000` |
 
 ## Boot file - boot.yaml|boot.json
 nonstop expects a boot file to be contained in any package it downloads which will provide the instructions for how it should start the packaged application. The files can be written in either JSON or YAML syntax.

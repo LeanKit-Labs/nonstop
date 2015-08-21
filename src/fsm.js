@@ -1,8 +1,10 @@
+var _ = require( "lodash" );
 var path = require( "path" );
 var debug = require( "debug" )( "nonstop:bootstrapper" );
 var machina = require( "machina" );
 var postal = require( "postal" );
 var channel = postal.channel( "status" );
+var notifications = postal.channel( "notifications" );
 
 function createFsm( config, server, packages, processhost, drudgeon, bootFile, fs ) {
 	var Machine = machina.Fsm.extend( {
@@ -13,39 +15,116 @@ function createFsm( config, server, packages, processhost, drudgeon, bootFile, f
 			}.bind( this );
 		},
 
+		_reset: function() {
+			this.old = this.latestInstall || this.latestDownload;
+			this.bootFile = undefined;
+			this.installed = undefined;
+			this.installedInfo = undefined;
+			this.installedVersion = undefined;
+			this.downloadedVersion = undefined;
+			this.latestInstall = undefined;
+			this.latestDownload = undefined;
+			this.setProjectPath();
+		},
+
+		getInfo: function() {
+			return this.latestInstall || this.latestDownload || this.old;
+		},
+
+		hasValidDownload: function() {
+			var package = config.package;
+			var version;
+			if( package.version ) {
+				version = _.filter( [ package.version, package.build ] ).join( "-" );
+			}
+			if( !_.isEmpty( version ) ) {
+				return _.contains( this.downloadedVersion, version );
+			} else {
+				return this.downloadedVersion;
+			}
+			return false;
+		},
+
+		hasValidInstall: function() {
+			var package = config.package;
+			var version;
+			if( package.version ) {
+				version = _.filter( [ package.version, package.build ] ).join( "-" );
+			}
+			if( !_.isEmpty( version ) ) {
+				return _.contains( this.installedVersion, version );
+			} else {
+				return this.installedVersion;
+			}
+			return false;
+		},
+
 		initialize: function() {
 			this.ignored = [];
 			processhost.on( "hosted.started", function() {
+				notifications.publish( "service.started", this.getInfo() );
+				this.sendState( "running" );
 				this.transition( "running" );
 			}.bind( this ) );
-			processhost.on( "hosted.failed", function( err ) {
-				channel.publish( "state", { state: "rolling back" } );
-				this.handle( "process.failed", err );
+
+			processhost.on( "hosted.crashed", function() {
+				var msg = _.defaults( {}, this.getInfo() );
+				notifications.publish( "service.crashed", msg );
 			}.bind( this ) );
+
+			processhost.on( "hosted.failed", function() {
+				var msg = _.defaults( {}, this.getInfo() );
+				notifications.publish( "service.failed", msg );
+				channel.publish( "stopped", { version: this.installedVersion } );
+				this.sendState( "failed" );
+				this.handle( "process.failed" );
+			}.bind( this ) );
+
 			server.on( "noConnection", function() {
-				channel.publish( "state", { state: "waiting to connect" } );
 				this.handle( "noConnection" );
 			}.bind( this ) );
-			server.on( "hasLatest", function( version ) {
-				this.installedVersion = version;
+
+			server.on( "hasLatest", function( info ) {
+				this.installedVersion = info.version;
 				this.handle( "hasLatest" );
 			}.bind( this ) );
-			server.on( "downloading", function( file ) {
-				channel.publish( "state", { state: "downloading " + file } );
+
+			server.on( "downloading", function( info ) {
+				notifications.publish( "host.downloading", info );
+				this.sendState( "downloading " + info.file );
 			}.bind( this ) );
-			server.on( "installing", function( file ) {
-				channel.publish( "state", { state: "installing " + file } );
+
+			server.on( "installing", function( info ) {
+				notifications.publish( "host.installing", info );
+				this.sendState( "installing " + info.file );
 			}.bind( this ) );
-			server.on( "installed", function( version ) {
-				this.installedVersion = version;
-				this.handle( "installed" );
+
+			server.on( "installed", function( info ) {
+				this.installedVersion = info.version;
+				this.handle( "installed", info );
 			}.bind( this ) );
-			server.on( "waiting", function( info ) {
-				channel.publish( "state", info );
-			}.bind( this ) );
+
 			this.setProjectPath();
-			this.on( "transition", function( transition ) {
-				channel.publish( "state", { state: transition.toState } );
+		},
+
+		reset: function( newConfig ) {
+			this.ignored = [];
+			if( newConfig ) {
+				config = newConfig;
+				this._reset();
+				this.setProjectPath();
+			}
+			processhost.stop();
+			debug( "Resetting service host" );
+			server.reset();
+			this.transition( "initializing" );
+		},
+
+		sendState: function( state ) {
+			channel.publish( "state", {
+				state: state,
+				version: this.installedVersion,
+				latestInstall: this.getInfo()
 			} );
 		},
 
@@ -54,21 +133,16 @@ function createFsm( config, server, packages, processhost, drudgeon, bootFile, f
 			this.installed = path.resolve( "./installs", [ filter.project, filter.owner, filter.branch ].join( "-" ) );
 		},
 
-		reset: function() {
-			debug( "Resetting bootstrapper" );
-			server.reset();
-			this.transition( "initializing" );
-		},
-
 		start: function() {
-			debug( "Starting bootstrapper" );
+			debug( "Starting service host" );
 			server.start();
 			this.transition( "initializing" );
 		},
 
 		stop: function() {
-			debug( "Stopping bootstrapper" );
+			debug( "Stopping service host" );
 			server.stop();
+			processhost.stop();
 			this.transition( "stopped" );
 		},
 
@@ -80,19 +154,35 @@ function createFsm( config, server, packages, processhost, drudgeon, bootFile, f
 						.then( this._raise( "installed.done" ) );
 				},
 				"installed.done": function( installed ) {
-					this.installedVersion = installed || "0.0.0";
+					this.latestInstall = installed;
+					this.installedVersion = installed ? installed.version : "0.0.0";
 					packages.getDownloaded( this.ignored )
 						.then( this._raise( "downloaded.done" ) );
 				},
 				"downloaded.done": function( downloaded ) {
-					this.downloadedVersion = downloaded || "0.0.0";
+					this.latestDownload = downloaded;
+					this.downloadedVersion = downloaded ? downloaded.version : "0.0.0";
 					debug( "Initializing - latest install \"%s\" : lastest download \"%s\"", this.installedVersion, this.downloadedVersion );
-					server.start( this.installedVersion );
+					if( this.installedVersion === "0.0.0" && this.downloadedVersion === "0.0.0" ) {
+						this.transition( "waiting" );
+					} else if( this.installedVersion !== "0.0.0" && this.hasValidInstall() ) {
+						this.installedInfo = this.latestInstall;
+						server.start( this.installedVersion );
+						this.transition( "loading" );
+					} else if( this.downloadedVersion !== "0.0.0" && this.hasValidDownload() ) {
+						server.install( this.latestDownload );
+					} else {
+						this.transition( "waiting" );
+					}
 				},
-				hasLatest: function() {
+				hasLatest: function( latest ) {
+					this.installedInfo = latest;
+					this.installedVersion = latest.version;
 					this.transition( "loading" );
 				},
-				installed: function() {
+				installed: function( latest ) {
+					this.installedInfo = latest;
+					this.installedVersion = latest.version;
 					this.transition( "loading" );
 				},
 				noConnection: function() {
@@ -148,8 +238,8 @@ function createFsm( config, server, packages, processhost, drudgeon, bootFile, f
 						args: set.boot.arguments,
 						cwd: path.resolve( this.installed, this.installedVersion, set.boot.path ),
 						stdio: "inherit",
-						restartLimit: 1,
-						restartWindow: 5000
+						restartLimit: config.service.failures,
+						restartWindow: config.service.tolerance
 					};
 					processhost.create( "hosted", process );
 					processhost.start( "hosted");
@@ -161,14 +251,15 @@ function createFsm( config, server, packages, processhost, drudgeon, bootFile, f
 					debug( "Service version \`%s\` failed beyond set tolerance", this.installedVersion );
 					this.ignored.push( this.installedVersion );
 					server.ignore( this.installedVersion );
+					this._reset();
 					this.transition( "initializing" );
 				}
 			},
 			running: {
 				_onEnter: function() {
 					debug( "Service version \"%s\" started", this.installedVersion );
-					this.emit( "running" );
-					channel.publish( "started", { version: this.installedVersion } );
+					this.emit( "running", this.installedInfo );
+					channel.publish( "started", this.installedInfo );
 				},
 				installed: function() {
 					debug( "New version \"%s\" installed", this.installedVersion );
@@ -176,26 +267,28 @@ function createFsm( config, server, packages, processhost, drudgeon, bootFile, f
 				},
 				"process.failed": function( err ) {
 					debug( "Service version \`%s\` failed beyond set tolerance", this.installedVersion );
-					channel.publish( "stopped", { version: this.installedVersion } );
 					this.ignored.push( this.installedVersion );
 					server.ignore( this.installedVersion );
+					this._reset();
 					this.transition( "initializing" );
 				}
 			},
 			stopped: {
 				_onEnter: function() {
-					clearTimeout( this.timeout );
 					channel.publish( "stopped", { version: this.installedVersion } );
 				}
 			},
 			waiting: {
 				_onEnter: function() {
 					this.emit( "waiting" );
+					this.sendState( "waiting for valid package" );
 				},
-				hasLatest: function() {
+				hasLatest: function( latest ) {
+					this.installedInfo = latest;
 					this.transition( "loading" );
 				},
-				installed: function() {
+				installed: function( latest ) {
+					this.installedInfo = latest;
 					this.transition( "loading" );
 				},
 				noConnection: function() {

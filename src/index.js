@@ -11,15 +11,21 @@ var fsm = require( "./fsm" );
 var packagesFn = require( "./packages" );
 var serverFn = require( "./serverFsm" );
 var registryFn = require( "./registration" );
-
-process.on( "uncaughtException", function( e ) { console.log( e.stack ); } );
+var postal = require( "postal" );
+var notifications = postal.channel( "notifications" );
 
 module.exports = function( customConfig ) {
 	var config = configFn( customConfig );
 	var packages = packagesFn( config, fs );
 	var processhost = require( "processhost" )();
-	var registry = registryFn( config, status );
 	var server = serverFn( config, packages );
+	var registry = registryFn( config, status );
+
+	notifications.subscribe( "#", function( msg, env ) {
+		if( msg && env.topic ) {
+			registry.notify( env.topic, msg );
+		}
+	} );
 
 	var main = fsm( config, server, packages, processhost, drudgeon, bootFile, fs );
 	fount.register( "control", main );
@@ -31,7 +37,8 @@ module.exports = function( customConfig ) {
 		port: config.service.port.local,
 		fount: fount,
 		resources: path.resolve( __dirname, "../resource" )
+	}, function() {
+		host.start();
 	} );
-	host.start();
 	return main;
 };

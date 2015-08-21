@@ -1,0 +1,17 @@
+#!/usr/bin/env node
+
+var memwatch = require( "memwatch-next" );
+
+var hd = new memwatch.HeapDiff();
+memwatch.on("leak", function(info) {
+	console.log( "Leaky AF", info );
+	var diff = hd.end();
+	hd = new memwatch.HeapDiff();
+	console.log( "Your diff:", diff );
+} );
+
+memwatch.on( "stats", function( info ) {
+	console.log( "DAT GC!", info );
+} );
+
+require( "../src/index.js" )( {} );

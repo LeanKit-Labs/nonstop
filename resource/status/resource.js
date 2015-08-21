@@ -5,20 +5,21 @@ module.exports = function( host, config, status ) {
 			service: {
 				url: "/",
 				method: "get",
-				handle: function( envelope ) {
+				handle: function() {
 					return {
 						data: {
 							uptime: {
 								host: status.uptime,
 								service: status.serviceUptime
 							},
-							package: config.filter.toHash(),
 							version: status.currentVersion,
 							state: status.state,
-							index: config.index,
 							port: config.service.port.public,
 							host: config.service.host,
-							name: config.service.name
+							name: config.service.name,
+							installed: status.latestInstall || "N/A",
+							package: config.filter.toHash(),
+							index: config.index
 						}
 					};
 				}

@@ -43,13 +43,15 @@ function getStatus( config, status ) {
 			host: status.uptime,
 			service: status.serviceUptime
 		},
-		package: config.filter.toHash(),
 		version: status.currentVersion,
 		state: status.state,
-		index: config.index,
 		port: config.service.port.public,
-		host: config.service.host,
-		name: config.service.name
+		ip: config.service.host.ip,
+		host: config.service.host.name,
+		name: config.service.name,
+		installed: status.latestInstall,
+		package: config.filter.toHash(),
+		index: config.index
 	};
 }
 
@@ -61,7 +63,7 @@ function register( config, status ) {
 	checkClient( config );
 	return connection
 		.then( function( client ) {
-			debug( "Calling register" );
+			debug( "Notifying the registry" );
 			return client.host.register( getStatus( config, status ) );
 		} );
 }
@@ -87,9 +89,26 @@ function update( config, status ) {
 		} );
 }
 
+function notify( config, topic, message ) {
+	if( topic && message ) {
+		checkClient( config );
+		return connection
+			.then(
+				function( client ) {
+					message.topic = topic;
+					message.name = config.service.name;
+					return client.host.notify( message );
+				},
+				function( err ) {
+					debug( "Could not publish notification to the registry: %s", err.stack );
+				} );
+	}
+}
+
 module.exports = function( config, status ) {
 	var api = {
 		register: register.bind( undefined, config, status ),
+		notify: notify.bind( undefined, config ),
 		update: update.bind( undefined, config, status )
 	};
 

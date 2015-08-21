@@ -1,6 +1,6 @@
+var _ = require( "lodash" );
 var path = require( "path" );
 var when = require( "when" );
-var debug = require( "debug" )( "nonstop:packages" );
 var semver = require( "semver" );
 var pack = require( "nonstop-pack" );
 var indexClient = require( "./indexClient" );
@@ -25,13 +25,22 @@ function getInstallPath( config, version ) {
 	return targetPath;
 }
 
-function getInstalled( config, pack, ignored ) {
+function getInstalled( config, fs, pack, ignored ) {
 	var installPath = getInstallPath( config );
 	ignored = ignored || [];
 	return pack.getInstalled( /.*/, installPath, ignored, true )
-		.then( null, function() {
-			return undefined;
-		} );
+		.then(
+			function( version ) {
+				if( version ) {
+					return fs.getInfo( config, version );
+				} else {
+					return undefined;
+				}
+			},
+			function() {
+				return undefined;
+			}
+		);
 }
 
 function getDownloaded( config, fs, ignored ) {
@@ -39,7 +48,7 @@ function getDownloaded( config, fs, ignored ) {
 	return when.promise( function( resolve ) {
 		var versions = fs.getVersions( config.downloads, ignored );
 		versions.sort( function( a, b ) {
-			return semver.rcompare( a, b );
+			return semver.rcompare( a.version, b.version );
 		} );
 		if( versions.length ) {
 			resolve( versions[ 0 ] );
@@ -60,22 +69,26 @@ function install( fs, config, package ) {
 	return pack.unpack( package, installPath );
 }
 
-module.exports = function( config, fs ) {
-	var index = indexClient( {
-		index: config.index,
-		package: config.package
-	} );
+function readInfo( fs, config, version ) {
+	return fs.getInfo( config, version );
+}
 
+module.exports = function( config, fs ) {
+	var index = indexClient( config );
 	fs = fs || require( "./fs" );
 
 	return {
 		download: download.bind( null, index ),
 		getAvailable: getAvailable.bind( null, index ),
 		getDownloaded: getDownloaded.bind( null, config, fs ),
-		getInstalled: getInstalled.bind( null, config, pack ),
+		getInstalled: getInstalled.bind( null, config, fs, pack ),
 		getInstallPath: getInstallPath.bind( null, config ),
 		hasLatest: hasLatest,
 		install: install.bind( null, fs, config ),
-		updateConfig: index.update
+		getInstalledInfo: readInfo.bind( null, fs, config ),
+		updateConfig: function( newConfig ) {
+			_.merge( config, newConfig );
+			index.update( newConfig );
+		}
 	};
 };

@@ -1,5 +1,13 @@
 ## 0.1.*
 
+### 0.1.5
+
+ * Support new package format
+ * Send notifications to registry on service stop/stop/fail events
+ * Add ability to control failure tolerance via configuration and API
+ * Bug fix - control commands should start/stop/reset hosted service
+ * Bug fix - changes to package filtering should reset hosted service
+
 ### 0.1.4
 Correct path to resources for global installation.
 

@@ -43,6 +43,7 @@ describe( "FSM", function() {
 	var pack = {
 		getAvailable: noop,
 		getInstalled: noop,
+		getInstalledInfo: noop,
 		getInstallPath: noop,
 		getDownloaded: noop,
 	};
@@ -91,7 +92,14 @@ describe( "FSM", function() {
 	describe( "without downloaded or installed versions", function() {
 
 		describe( "when starting up", function() {
-			
+			before( function() {
+
+			} );
+
+			after( function() {
+
+			} );
+
 		 	describe( "without connectivity", function() {
 		 		var lastState;
 		 		before( function( done ) {
@@ -100,15 +108,20 @@ describe( "FSM", function() {
 					var getInstalled = packMock.expects( "getInstalled" );
 					var getDownloaded = packMock.expects( "getDownloaded" );
 					var getInstallPath = packMock.expects( "getInstallPath" );
-					
+					var getAvailable = packMock.expects( "getAvailable" );
+
 					getInstalled
 						.returns( when( undefined ) );
 
-					getInstallPath = packMock.expects( "getInstallPath" )
+					getInstallPath
 						.withArgs( "0.0.0" )
 						.returns( "./installs/0.0.0" );
 
 					getDownloaded
+						.withArgs( [] )
+						.returns( when( undefined ) );
+
+					getAvailable
 						.withArgs( [] )
 						.returns( when( undefined ) );
 
@@ -141,8 +154,9 @@ describe( "FSM", function() {
 		 	} );
 
 	 		describe( "with installed version", function() {
-	 			var lastState, prebooted;
+	 			var lastState, prebooted, info;
 	 			var bootFileMock, drudgeonMock;
+
 		 		before( function( done ) {
 		 			var versionPath = path.resolve( "./installs/test-me-master" );
 		 			fsMock = sinon.mock( fs );
@@ -158,10 +172,15 @@ describe( "FSM", function() {
 					var getInstalled = packMock.expects( "getInstalled" );
 					var getDownloaded = packMock.expects( "getDownloaded" );
 					var getInstallPath = packMock.expects( "getInstallPath" );
-					
+
 					getInstalled
 						.withArgs( [] )
-						.returns( when( "0.1.0" ) );
+						.returns( when( {
+							owner: "me",
+							project: "test",
+							branch: "master",
+							version: "0.1.0"
+						} ) );
 
 					getInstallPath
 						.withArgs( "0.1.0" )
@@ -186,8 +205,8 @@ describe( "FSM", function() {
 
 					readSet
 						.withArgs( { boot: "./:node index.js" } )
-						.returns( { 
-							boot: 
+						.returns( {
+							boot:
 								{
 									command: "node",
 									arguments: [ "index.js" ],
@@ -205,12 +224,13 @@ describe( "FSM", function() {
 						prebooted = true;
 						fsm.off( prebootedHandle );
 					} );
-					runningHandle = fsm.on( "running", function() {
+					runningHandle = fsm.on( "running", function( runningInfo ) {
+						info = runningInfo;
 						fsm.off( runningHandle );
 						lastState = fsm.state;
 						done();
 					} );
-					
+
 		 		} );
 
 	 			it( "should run the preboot commands", function() {
@@ -219,6 +239,17 @@ describe( "FSM", function() {
 
 				it( "should start the installed version", function() {
 					fsm.installedVersion.should.equal( "0.1.0" );
+				} );
+
+				it( "should provide package info on event", function() {
+					info.should.eql(
+						{
+							owner: "me",
+							project: "test",
+							branch: "master",
+							version: "0.1.0"
+						}
+					);
 				} );
 
 				it( "should end in running state", function() {

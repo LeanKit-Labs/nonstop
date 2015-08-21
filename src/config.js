@@ -29,11 +29,16 @@ function getDefaults() {
 		},
 		service: {
 			name: sysInfo.name,
-			host: sysInfo.name,
+			host: {
+				name: sysInfo.name,
+				ip: "unspecified"
+			},
 			port: {
 				local: 9090,
 				public: 9090
-			}
+			},
+			failures: 1,
+			tolerance: 5000
 		}
 	};
 }
@@ -72,9 +77,9 @@ function buildDownloadRoot( cfg ) {
 
 function getConfiguration( custom ) {
 	var defaults = getDefaults();
-	_.merge( defaults, custom );
+	var merged = _.merge( defaults, custom );
 	var cfg = require( "configya" )( {
-		defaults: defaults,
+		defaults: merged,
 		file: "./bootstrap.json"
 	} );
 
