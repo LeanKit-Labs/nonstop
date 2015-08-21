@@ -164,6 +164,7 @@ function createFsm( config, server, packages, processhost, drudgeon, bootFile, f
 					this.downloadedVersion = downloaded ? downloaded.version : "0.0.0";
 					debug( "Initializing - latest install \"%s\" : lastest download \"%s\"", this.installedVersion, this.downloadedVersion );
 					if( this.installedVersion === "0.0.0" && this.downloadedVersion === "0.0.0" ) {
+						server.start( this.installedVersion );
 						this.transition( "waiting" );
 					} else if( this.installedVersion !== "0.0.0" && this.hasValidInstall() ) {
 						this.installedInfo = this.latestInstall;
