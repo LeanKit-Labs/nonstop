@@ -1,5 +1,8 @@
 ## 0.1.*
 
+### 0.1.7
+Correct edge cases where service stops checking for newer versions.
+
 ### 0.1.6
 Fix defect preventing fresh installations from downloading a package.
 
