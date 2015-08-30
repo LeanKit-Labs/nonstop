@@ -41,7 +41,8 @@
     "nock": "^0.50.0",
     "open": "0.0.5",
     "should": "^4.0.4",
-    "sinon": "^1.12.1"
+    "sinon": "^1.12.1",
+    "sinon-as-promised": "^4.0.0"
   },
   "dependencies": {
     "autohost": "~0.4.0",

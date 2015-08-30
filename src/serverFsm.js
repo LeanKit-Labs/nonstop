@@ -115,6 +115,11 @@ function createFsm( config, packages, installed ) {
 					debug( "Downloaded package \"%s\" successfully", info.file );
 					this.emit( "downloaded", info );
 					this.transition( "installing" );
+				},
+				"download.failed": function( err ) {
+					debug( "Download for version %\"%s\" failed with %s", this.latest.version, err.stack ? err.stack : err );
+					this.emit( "download.failed", this.downloaded );
+					this.transition( "failed" );
 				}
 			},
 			installing: {
@@ -129,11 +134,11 @@ function createFsm( config, packages, installed ) {
 					this.latest = this.downloaded;
 					this.installedVersion = this.latest.version;
 					debug( "Installation of version \"%s\" completed successfully", this.installedVersion );
-					this.transition( "waiting" );
 					this.emit( "installed", this.latest );
+					this.transition( "waiting" );
 				},
 				"installation.failed": function( err ) {
-					debug( "Installation of version \"%s\" failed with %s", this.latest.version, err.stack );
+					debug( "Installation of version \"%s\" failed with %s", this.latest.version, err.stack ? err.stack : err );
 					this.emit( "install.failed", this.downloaded );
 					this.transition( "failed" );
 				}
@@ -159,11 +164,8 @@ function createFsm( config, packages, installed ) {
 						wait = this.waitCeiling;
 					}
 					debug( "Attempting reconnection in", wait, "ms" );
-					this.timeout = setTimeout( this.checkForNew.bind( this ), wait );
 					this.emit( "waiting", { state: "retrying connection in " + wait + " ms" } );
-				},
-				timeout: function() {
-					this.transition( "checkingForNew" );
+					this.timeout = setTimeout( this.checkForNew.bind( this ), wait );
 				}
 			},
 			stopped: {

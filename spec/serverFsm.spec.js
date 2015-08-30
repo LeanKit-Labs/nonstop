@@ -17,6 +17,7 @@ var config = require( "../src/config.js" )( {
 } );
 
 var sinon = require( "sinon" );
+require( "sinon-as-promised" );
 var nock = require( "nock" );
 
 describe( "Server FSM", function() {
@@ -60,7 +61,7 @@ describe( "Server FSM", function() {
 
 					getAvailable
 						.atMost( 10 )
-						.returns( when.reject( new Error( "Connection to \"http://localhost:12321/api\" could not be established" ) ) );
+						.rejects(new Error( "Connection to \"http://localhost:12321/api\" could not be established" ) );
 
 					fsm = fsmFn( config, pack, undefined );
 					var transitionHandle, noConnectionHandle;
@@ -102,6 +103,7 @@ describe( "Server FSM", function() {
 				} );
 
 		 		after( function() {
+		 			fsm.stop();
 		 			packMock.restore();
 		 		} );
 			} );
@@ -127,14 +129,14 @@ describe( "Server FSM", function() {
 
 						getAvailable
 							.atMost( 10 )
-							.returns( when( {
+							.resolves( {
 								owner: "owner",
 								project: "proj",
 								branch: "branch",
 								file: "proj~owner~branch~0.0.9~10~darwin~OSX~10.9.2~x64.tar.gz",
 								version: "0.0.9-10",
 								build: "10"
-							} ) );
+							} );
 
 						getInstalledInfo
 							.withArgs( "0.1.0-1" )
@@ -201,7 +203,7 @@ describe( "Server FSM", function() {
 
 						getAvailable
 							.atMost( 10 )
-							.returns( when( info ) );
+							.resolves( info );
 
 						download.returns( when( info ) );
 
@@ -222,10 +224,10 @@ describe( "Server FSM", function() {
 
 						installedHandle = fsm.on( "installed", function( version ) {
 							installedVersion = version;
+							process.nextTick( fsm.stop.bind( fsm ) );
 							fsm.off( hasNewHandle );
 							fsm.off( downloadingHandle );
 							fsm.off( installedHandle );
-							fsm.stop();
 							done();
 						} );
 

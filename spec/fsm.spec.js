@@ -14,9 +14,10 @@ var config = require( "../src/config.js" )( {
 	}
 } );
 var sinon = require( "sinon" );
+require( "sinon-as-promised" );
 var nock = require( "nock" );
 
-describe( "FSM", function() {
+describe.only( "FSM", function() {
 	var noop = function() {};
 	var server = {
 		start: function() {
@@ -26,6 +27,9 @@ describe( "FSM", function() {
 		clear: function() {
 			this.started = {};
 			this.subscriptions = {};
+		},
+		install: function( version ) {
+			this.raise( "installed", version );
 		},
 		on: function( topic, handle ) {
 			var subscriptions = this.subscriptions[ topic ];
@@ -92,15 +96,7 @@ describe( "FSM", function() {
 	describe( "without downloaded or installed versions", function() {
 
 		describe( "when starting up", function() {
-			before( function() {
-
-			} );
-
-			after( function() {
-
-			} );
-
-		 	describe( "without connectivity", function() {
+			describe( "without connectivity", function() {
 		 		var lastState;
 		 		before( function( done ) {
 					packMock = sinon.mock( pack );
@@ -153,7 +149,7 @@ describe( "FSM", function() {
 		 		} );
 		 	} );
 
-	 		describe( "with installed version", function() {
+	 		describe( "with latest version installed", function() {
 	 			var lastState, prebooted, info;
 	 			var bootFileMock, drudgeonMock;
 
@@ -263,6 +259,123 @@ describe( "FSM", function() {
 		 			server.clear();
 		 		} );
 	 		} );
+
+			describe( "with latest version downloaded not installed", function() {
+	 			var lastState, prebooted, info;
+	 			var bootFileMock, drudgeonMock;
+
+		 		before( function( done ) {
+		 			var versionPath = path.resolve( "./installs/test-me-master" );
+		 			fsMock = sinon.mock( fs );
+		 			bootFileMock = sinon.mock( bootFile );
+		 			var getFile = bootFileMock.expects( "get" );
+
+		 			drudgeonMock = sinon.stub();
+		 			drudgeonMock.readSet = noop;
+		 			var readSet = sinon.stub( drudgeonMock, "readSet" );
+		 			drudgeonMock.returns( when( true ) );
+
+					packMock = sinon.mock( pack );
+					var getInstalled = packMock.expects( "getInstalled" );
+					var getDownloaded = packMock.expects( "getDownloaded" );
+					var getInstallPath = packMock.expects( "getInstallPath" );
+
+					getInstalled
+						.withArgs( [] )
+						.returns( when( {
+							owner: "me",
+							project: "test",
+							branch: "master",
+							version: "0.1.0"
+						} ) );
+
+					getInstallPath
+						.withArgs( "0.1.0" )
+						.returns( versionPath );
+
+					getDownloaded
+						.withArgs( [] )
+						.resolves( {
+							owner: "me",
+							project: "test",
+							branch: "master",
+							version: "0.1.1"
+						} );
+
+					getFile
+						.withArgs( path.resolve( "./installs/test-me-master/0.1.1" ) )
+						.returns( when( {
+							boot: "./:node index.js",
+							preboot: {
+								"npm": "./:npm install"
+							}
+						} ) );
+
+					fsMock.expects( "exists" )
+						.withArgs( path.resolve( "./installs/test-me-master" ) )
+						.onCall( 0 ).returns( true )
+						.onCall( 1 ).returns( false );
+
+					readSet
+						.withArgs( { boot: "./:node index.js" } )
+						.returns( {
+							boot:
+								{
+									command: "node",
+									arguments: [ "index.js" ],
+									path: "./"
+								}
+							} );
+
+					server.on( "started", function() {
+						server.raise( "noConnection" );
+					} );
+
+					fsm = fsmFn( config, server, pack, processhost, drudgeonMock, bootFile, fs );
+					var runningHandle, prebootedHandle;
+					prebootedHandle = fsm.on( "preboot.completed", function() {
+						prebooted = true;
+						fsm.off( prebootedHandle );
+					} );
+					runningHandle = fsm.on( "running", function( runningInfo ) {
+						info = runningInfo;
+						fsm.off( runningHandle );
+						lastState = fsm.state;
+						done();
+					} );
+
+		 		} );
+
+	 			it( "should run the preboot commands", function() {
+	 				prebooted.should.be.true; // jshint ignore : line
+	 			} );
+
+				it( "should start the installed version", function() {
+					fsm.installedVersion.should.equal( "0.1.1" );
+				} );
+
+				it( "should provide package info on event", function() {
+					info.should.eql(
+						{
+							owner: "me",
+							project: "test",
+							branch: "master",
+							version: "0.1.1"
+						}
+					);
+				} );
+
+				it( "should end in running state", function() {
+					lastState.should.equal( "running" );
+				} );
+
+				after( function() {
+					fsMock.restore();
+					bootFileMock.restore();
+		 			packMock.restore();
+		 			server.clear();
+		 		} );
+	 		} );
 		} );
 
 		describe( "with connectivity", function() {
@@ -293,24 +406,6 @@ describe( "FSM", function() {
 		 		} );
 			} );
 
-		} );
-
-		describe( "when running service fails past tolerance", function() {
-			var lastState;
-	 		before( function( done ) {
-				done();
-	 		} );
-
-			it( "should remove the installed version from disk" );
-
-			it( "should make an entry in a quarantine file" );
-
-			it( "should filter all latest checks with the bad version" );
-
-			after( function() {
-	 			packMock.restore();
-	 			server.clear();
-	 		} );
 		} );
 	} );
 } );
