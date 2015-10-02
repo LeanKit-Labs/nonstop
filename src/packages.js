@@ -1,23 +1,21 @@
-var path = require( 'path' );
-var when = require( 'when' );
-var lift = require( 'when/node' ).lift;
-var _ = require( 'lodash' );
-var debug = require( 'debug' )( 'nonstop:packages' );
-var semver = require( 'semver' );
-var pack = require( 'nonstop-pack' );
-var index = require( 'nonstop-index-client' );
+var _ = require( "lodash" );
+var path = require( "path" );
+var when = require( "when" );
+var semver = require( "semver" );
+var pack = require( "nonstop-pack" );
+var indexClient = require( "./indexClient" );
 
-function download( client, file ) {
-	return client.download( file );
+function download( index, file ) {
+	return index.client.download( file );
 }
 
-function getAvailable( client, ignored ) {
-	return client.getLatest( ignored );
+function getAvailable( index, ignored ) {
+	return index.client.getLatest( ignored );
 }
 
 function getInstallPath( config, version ) {
 	var filter = config.filter.toHash();
-	var target = [ filter.project, filter.owner, filter.branch ].join( '-' );
+	var target = [ filter.project, filter.owner, filter.branch ].join( "-" );
 	var targetPath;
 	if( version ) {
 		targetPath = path.join( config.installs, target, version );
@@ -27,13 +25,22 @@ function getInstallPath( config, version ) {
 	return targetPath;
 }
 
-function getInstalled( config, pack, ignored ) {
+function getInstalled( config, fs, pack, ignored ) {
 	var installPath = getInstallPath( config );
 	ignored = ignored || [];
 	return pack.getInstalled( /.*/, installPath, ignored, true )
-		.then( null, function() {
-			return undefined;
-		} );
+		.then(
+			function( version ) {
+				if( version ) {
+					return fs.getInfo( config, version );
+				} else {
+					return undefined;
+				}
+			},
+			function() {
+				return undefined;
+			}
+		);
 }
 
 function getDownloaded( config, fs, ignored ) {
@@ -41,7 +48,7 @@ function getDownloaded( config, fs, ignored ) {
 	return when.promise( function( resolve ) {
 		var versions = fs.getVersions( config.downloads, ignored );
 		versions.sort( function( a, b ) {
-			return semver.rcompare( a, b );
+			return semver.rcompare( a.version, b.version );
 		} );
 		if( versions.length ) {
 			resolve( versions[ 0 ] );
@@ -56,27 +63,32 @@ function hasLatest( installed, available ) {
 }
 
 function install( fs, config, package ) {
-	var info = pack.parse( '', package );
+	var info = pack.parse( "", package );
 	var installPath = getInstallPath( config, info.version );
 	fs.ensurePath( path.dirname( installPath ) );
 	return pack.unpack( package, installPath );
 }
 
-module.exports = function( config, fs ) {
-	var client = index( {
-		index: config.index,
-		nonstop: config.package
-	} );
+function readInfo( fs, config, version ) {
+	return fs.getInfo( config, version );
+}
 
-	fs = fs || require( './fs' );
+module.exports = function( config, fs ) {
+	var index = indexClient( config );
+	fs = fs || require( "./fs" );
 
 	return {
-		download: download.bind( null, client ),
-		getAvailable: getAvailable.bind( null, client ),
+		download: download.bind( null, index ),
+		getAvailable: getAvailable.bind( null, index ),
 		getDownloaded: getDownloaded.bind( null, config, fs ),
-		getInstalled: getInstalled.bind( null, config, pack ),
+		getInstalled: getInstalled.bind( null, config, fs, pack ),
 		getInstallPath: getInstallPath.bind( null, config ),
 		hasLatest: hasLatest,
-		install: install.bind( null, fs, config )
+		install: install.bind( null, fs, config ),
+		getInstalledInfo: readInfo.bind( null, fs, config ),
+		updateConfig: function( newConfig ) {
+			_.merge( config, newConfig );
+			index.update( newConfig );
+		}
 	};
 };

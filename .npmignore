@@ -4,3 +4,5 @@ node_modules/
 spec/
 packages/
 coverage/
+downloads/
+installs/

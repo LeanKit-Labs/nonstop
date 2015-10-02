@@ -1,15 +1,15 @@
-var _ = require( 'lodash' );
+var _ = require( "lodash" );
 
 var keys = [
-	'project',
-	'owner',
-	'branch',
-	'build',
-	'version',
-	'osVersion',
-	'osName',
-	'architecture',
-	'platform'
+	"project",
+	"owner",
+	"branch",
+	"build",
+	"version",
+	"osVersion",
+	"osName",
+	"architecture",
+	"platform"
 ];
 
 function createFilter( cfg ) {
@@ -39,9 +39,9 @@ function createFilter( cfg ) {
 		var str = _.filter( _.map( keys, function( k ) {
 			var v = props[ k ]._val;
 			if( v ) {
-				return [ k, v ].join( '=' );	
+				return [ k, v ].join( "=" );	
 			}			
-		} ) ).join( '&' );
+		} ) ).join( "&" );
 		return str;
 	};
 	return props;
