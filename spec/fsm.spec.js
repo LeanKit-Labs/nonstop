@@ -1,7 +1,5 @@
 var should = require( "should" ); // jshint ignore : line
-var when = require( "when" );
 var path = require( "path" );
-var _ = require( "lodash" );
 var fsmFn = require( "../src/fsm.js" );
 var config = require( "../src/config.js" )( {
 	index: {
@@ -13,9 +11,10 @@ var config = require( "../src/config.js" )( {
 		project: "test"
 	}
 } );
+var _ = require( "lodash" );
+var when = require( "when" );
 var sinon = require( "sinon" );
 require( "sinon-as-promised" );
-var nock = require( "nock" );
 
 describe.only( "FSM", function() {
 	var noop = function() {};
@@ -159,10 +158,15 @@ describe.only( "FSM", function() {
 		 			bootFileMock = sinon.mock( bootFile );
 		 			var getFile = bootFileMock.expects( "get" );
 
-		 			drudgeonMock = sinon.stub();
+		 			drudgeonMock = function() {
+		 				return {
+		 					run: function() {
+		 						return when.resolve( true );
+		 					}
+		 				};
+		 			};
 		 			drudgeonMock.readSet = noop;
 		 			var readSet = sinon.stub( drudgeonMock, "readSet" );
-		 			drudgeonMock.returns( when( true ) );
 
 					packMock = sinon.mock( pack );
 					var getInstalled = packMock.expects( "getInstalled" );
@@ -270,10 +274,15 @@ describe.only( "FSM", function() {
 		 			bootFileMock = sinon.mock( bootFile );
 		 			var getFile = bootFileMock.expects( "get" );
 
-		 			drudgeonMock = sinon.stub();
+		 			drudgeonMock = function() {
+		 				return {
+		 					run: function() {
+		 						return when.resolve( true );
+		 					}
+		 				};
+		 			};
 		 			drudgeonMock.readSet = noop;
 		 			var readSet = sinon.stub( drudgeonMock, "readSet" );
-		 			drudgeonMock.returns( when( true ) );
 
 					packMock = sinon.mock( pack );
 					var getInstalled = packMock.expects( "getInstalled" );

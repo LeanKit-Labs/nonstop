@@ -249,9 +249,13 @@ function createFsm( config, server, packages, processhost, drudgeon, bootFile, f
 			prebooting: {
 				_onEnter: function() {
 					if( this.bootFile.preboot ) {
-						drudgeon( config.package.platform, this.bootFile.preboot, this.installed ) // jshint ignore:line
-							.then( this._raise( "preboot.done" ) )
-							.then( this._raise( "preboot.failed" ) );
+						var relativePath = path.resolve( this.installed, this.installedVersion );
+						drudgeon( config.package.platform, this.bootFile.preboot, relativePath )
+							.run() // jshint ignore:line
+							.then(
+								this._raise( "preboot.done" ),
+								this._raise( "preboot.failed" )
+							);
 					} else {
 						this.transition( "starting" );
 					}
