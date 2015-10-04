@@ -1,5 +1,8 @@
 ## 0.1.*
 
+### 0.1.8
+Bug fix - preboot commands were using drudgeon's API incorrectly.
+
 ### 0.1.7
 Correct edge cases where service stops checking for newer versions.
 

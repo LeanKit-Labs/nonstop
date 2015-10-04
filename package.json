@@ -1,6 +1,6 @@
 {
   "name": "nonstop",
-  "version": "0.1.7",
+  "version": "0.1.8",
   "description": "A self-updating service host",
   "main": "src/index.js",
   "bin": {
@@ -48,7 +48,7 @@
     "autohost": "~0.4.0",
     "configya": "~0.2.0",
     "debug": "^2.0.0",
-    "drudgeon": "~0.1.0",
+    "drudgeon": "~0.2.0",
     "fount": "^0.1.0",
     "globulesce": "~0.1.4",
     "halon": "^0.3.2",
