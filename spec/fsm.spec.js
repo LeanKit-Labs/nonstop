@@ -124,8 +124,10 @@ describe.only( "FSM", function() {
 						server.raise( "noConnection" );
 					} );
 
+					var expectedPath = path.resolve( __dirname, "../installs/test-me-master" );
+
 					fsMock.expects( "exists" )
-						.withArgs( "/git/labs/nonstop/nonstop/installs/test-me-master" )
+						.withArgs( expectedPath )
 						.returns( false );
 
 					fsm = fsmFn( config, server, pack, processhost, {}, bootFile, fs );

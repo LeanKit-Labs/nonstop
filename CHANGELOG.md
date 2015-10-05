@@ -1,5 +1,8 @@
 ## 0.1.*
 
+### Current
+Bug fix - remove hard coded path in spec expectation
+
 ### 0.1.8
 Bug fix - preboot commands were using drudgeon's API incorrectly.
 
