@@ -1,4 +1,5 @@
-var should = require( "should" );
+var chai = require( "chai" );
+chai.should();
 var bootFile = require( "../src/bootFile.js" );
 var path = require( "path" );
 

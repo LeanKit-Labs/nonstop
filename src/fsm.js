@@ -250,7 +250,11 @@ function createFsm( config, server, packages, processhost, drudgeon, bootFile, f
 				_onEnter: function() {
 					if( this.bootFile.preboot ) {
 						var relativePath = path.resolve( this.installed, this.installedVersion );
-						drudgeon( config.package.platform, this.bootFile.preboot, relativePath )
+						var prebootConfig = {
+							platform: config.package.platform,
+							relativePath: relativePath
+						};
+						drudgeon( this.bootFile.preboot, prebootConfig )
 							.run() // jshint ignore:line
 							.then(
 								this._raise( "preboot.done" ),

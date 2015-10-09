@@ -1,6 +1,12 @@
-var should = require( "should" );
 var _ = require( "lodash" );
 var when = require( "when" );
+var chai = require( "chai" );
+var sinon = require( "sinon" );
+var sinonChai = require("sinon-chai");
+chai.use(sinonChai);
+require( "sinon-as-promised" );
+var nock = require( "nock" );
+
 var semver = require( "semver" );
 var fsmFn = require( "../src/serverFsm.js" );
 var path = require( "path" );
@@ -15,10 +21,6 @@ var config = require( "../src/config.js" )( {
 		files: "./downloads"
 	}
 } );
-
-var sinon = require( "sinon" );
-require( "sinon-as-promised" );
-var nock = require( "nock" );
 
 describe( "Server FSM", function() {
 	describe( "without downloaded or installed versions", function() {

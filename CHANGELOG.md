@@ -1,7 +1,9 @@
 ## 0.1.*
 
-### Current
-Bug fix - remove hard coded path in spec expectation
+### 0.1.9
+ * Bug fix - incorrect argument format passed to new drudgeon version
+ * Switch specs to chai and add sinon-chai
+ * Bug fix - remove hard coded path in spec expectation
 
 ### 0.1.8
 Bug fix - preboot commands were using drudgeon's API incorrectly.

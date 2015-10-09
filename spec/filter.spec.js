@@ -1,4 +1,5 @@
-var should = require( "should" ); // jshint ignore : line
+var chai = require( "chai" );
+chai.should();
 var filterFn = require( "../src/filter" );
 
 describe( "Filter", function() {
